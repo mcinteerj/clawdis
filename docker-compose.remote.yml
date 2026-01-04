@@ -1,0 +1,73 @@
+services:
+  clawdis-gateway:
+    image: ${CLAWDIS_IMAGE:-clawdis:remote}
+    container_name: clawdis-gateway
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      PATH: /home/node/clawd/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      # API keys from .env.remote
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY}
+      # Gateway auth
+      CLAWDIS_GATEWAY_TOKEN: ${CLAWDIS_GATEWAY_TOKEN}
+    volumes:
+      # Standard Clawdis pattern: host config -> container ~/.clawdis
+      - ${CLAWDIS_CONFIG_DIR}:/home/node/.clawdis
+      - ${CLAWDIS_WORKSPACE_DIR}:/home/node/clawd
+      - /home/jakemc/projects/agent-config:/home/node/agent-config
+      - /home/jakemc/.zsh_secrets:/home/node/.zsh_secrets
+    ports:
+      - "${CLAWDIS_GATEWAY_PORT:-18789}:18789"
+      - "${CLAWDIS_BRIDGE_PORT:-18790}:18790"
+    networks:
+      - default
+      - proxy_network
+    init: true
+    restart: unless-stopped
+    command:
+      [
+        "node",
+        "dist/index.js",
+        "gateway-daemon",
+        "--bind",
+        "${CLAWDIS_GATEWAY_BIND:-lan}",
+        "--port",
+        "${CLAWDIS_GATEWAY_PORT:-18789}"
+      ]
+    labels:
+      - "komodo.resource.type=stack"
+      - "komodo.stack.name=clawdis"
+      - "komodo.description=Trudie WhatsApp Agent Gateway"
+
+  clawdis-cli:
+    image: ${CLAWDIS_IMAGE:-clawdis:remote}
+    container_name: clawdis-cli
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      PATH: /home/node/clawd/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      BROWSER: echo
+      # API keys from .env.remote
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY}
+    volumes:
+      # Source code mount for development
+      - /home/jakemc/projects/clawdis:/app
+      # Standard Clawdis pattern
+      - ${CLAWDIS_CONFIG_DIR}:/home/node/.clawdis
+      - ${CLAWDIS_WORKSPACE_DIR}:/home/node/clawd
+      - /home/jakemc/projects/agent-config:/home/node/agent-config
+      - /home/jakemc/.zsh_secrets:/home/node/.zsh_secrets
+    stdin_open: true
+    tty: true
+    entrypoint: ["node", "dist/index.js"]
+    labels:
+      - "komodo.resource.type=stack"
+      - "komodo.stack.name=clawdis"
+
+networks:
+  proxy_network:
+    external: true
